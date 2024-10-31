@@ -44,7 +44,7 @@ def get_new_released_movies():
 def get_trending_movies():
     url = f'https://api.themoviedb.org/3/trending/movie/week?api_key={API_KEY}'
     response = requests.get(url)
-    return process_movie_results(response, include_backdrop=True)  # Include backdrops for trending movies
+    return process_movie_results(response, include_backdrop=True)
 
 def get_genres():
     """Fetches a list of genres from the TMDB API."""
@@ -108,10 +108,8 @@ def process_movie_results(response, include_backdrop=False):
         results = response.json().get('results', [])
         for movie in results:
             movie['rating'] = movie.get('vote_average', 'N/A')
-            # Use higher resolution poster images
             poster_path = movie.get('poster_path')
             movie['poster'] = f"https://image.tmdb.org/t/p/original{poster_path}" if poster_path else "https://via.placeholder.com/500x750?text=No+Image"
-            # Backdrop images for carousel
             if include_backdrop:
                 backdrop_path = movie.get('backdrop_path')
                 movie['backdrop'] = f"https://image.tmdb.org/t/p/original{backdrop_path}" if backdrop_path else "https://via.placeholder.com/1280x720?text=No+Image"
@@ -170,25 +168,19 @@ def view_favorites():
 # Route to recommend movies with search and filters
 @app.route('/recommend', methods=['POST'])
 def recommend():
-    # Collect parameters from POST for filter functionality
     movie_title = request.form.get('movie_title', '')
     release_year = request.form.get('release_year', '')
     rating = request.form.get('rating', '')
     genre = request.form.get('genre', '')
     language = request.form.get('language', '')
 
-    # Fetch genres for filter dropdown
     genres = get_genres()
-
-    # Fetch search results based on filters
     search_results = search_movie(movie_title, release_year, rating, genre, language)
     
-    # Only get recommendations if there's a movie title to base recommendations on
     recommendations = []
     if movie_title and search_results:
         recommendations = get_recommendations(search_results[0]['id'])
 
-    # Always fetch trending movies to display if recommendations are absent
     trending_movies = get_trending_movies()
     most_watched_movies = get_top_rated_movies()
     new_released_movies = get_new_released_movies()
@@ -238,13 +230,22 @@ def index():
 @app.route('/top-rated')
 def top_rated():
     top_rated_movies = get_top_rated_movies()
-    return render_template('top_rated.html', top_rated_movies=top_rated_movies)
+    genres = get_genres()
+    return render_template('top_rated.html', top_rated_movies=top_rated_movies, genres=genres)
 
 # Route to display newly released movies
 @app.route('/new-released')
 def new_released():
     new_released_movies = get_new_released_movies()
-    return render_template('new_released.html', new_released_movies=new_released_movies)
+    genres = get_genres()
+    return render_template('new_released.html', new_released_movies=new_released_movies, genres=genres)
+
+# Route to display trending movies
+@app.route('/trending')
+def trending():
+    trending_movies = get_trending_movies()
+    genres = get_genres()
+    return render_template('trending.html', trending_movies=trending_movies, genres=genres)
 
 # Route to display movie details with reviews and content-based recommendations
 @app.route('/movie/<int:movie_id>', methods=['GET', 'POST'])
@@ -270,10 +271,48 @@ def movie_details(movie_id):
 
     return render_template('movie_details.html', movie=movie, reviews=reviews, avg_rating=avg_rating, recommendations=recommendations)
 
+# New Route: Remove Movie from Watchlist or Favorites
+@app.route('/<category>/remove/<int:movie_id>', methods=['POST'])
+@login_required
+def remove_movie(category, movie_id):
+    if category not in ['watchlist', 'favorites']:
+        flash("Invalid category.", "danger")
+        return redirect(url_for('index'))
+    
+    entry = UserMovies.query.filter_by(user_id=current_user.id, movie_id=movie_id, category=category).first()
+    if entry:
+        try:
+            db.session.delete(entry)
+            db.session.commit()
+            flash(f"Movie removed from {category}.", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error removing movie from {category}: {str(e)}", "danger")
+    else:
+        flash("Movie not found in your list.", "warning")
+    
+    return redirect(url_for(f'view_{category}'))
+
+@app.route('/filter_watchlist', methods=['GET'])
+@login_required
+def filter_watchlist():
+    sortby = request.args.get('sortby')
+    movies = get_filtered_watchlist(current_user.id, sortby)
+    
+
+@app.route('/filter_favorites', methods=['GET'])
+@login_required
+def filter_favorites():
+    sortby = request.args.get('sortby')
+    # Retrieve and process the favorite movies based on filters
+    movies = get_filtered_watchlist(current_user.id, sortby, category='favorites')
+    return render_template('favorites.html', movies=movies)
+
+
 # Initialize database tables if they do not exist
 with app.app_context():
     db.create_all()
 
 # Start the Flask app
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=5004)

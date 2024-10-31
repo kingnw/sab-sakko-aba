@@ -6,43 +6,91 @@
     <title>Login</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        /* Custom styling for the login page */
+        /* General Styles */
         body {
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background-color: #f8f9fa;
+            background-color: #000000; /* Pitch black background */
+            color: #ffffff; /* White text */
             margin: 0;
         }
+
+        /* Login Container Styles */
         .login-container {
             max-width: 400px;
             width: 100%;
             padding: 30px;
-            background-color: #fff;
+            background-color: #1a1a1a; /* Dark background for container */
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 8px rgba(255, 255, 255, 0.1); /* Light shadow for contrast */
         }
+
         .login-container h2 {
             text-align: center;
             margin-bottom: 30px;
-            color: #333;
+            color: #00aaff; /* Blue color for the heading */
         }
+
         .form-control {
             border-radius: 20px;
+            background-color: #1a1a1a; /* Dark background for inputs */
+            border: 1px solid #333333; /* Dark border */
+            color: #ffffff; /* White text */
         }
+
+        .form-control::placeholder {
+            color: #888888; /* Grey placeholder text */
+        }
+
         .btn-primary {
             border-radius: 20px;
             width: 100%;
+            background-color: #00aaff; /* Blue background */
+            border: none;
+            color: #000000; /* Black text */
         }
+
+        .btn-primary:hover {
+            background-color: #0088cc; /* Darker blue on hover */
+            color: #ffffff; /* White text on hover */
+        }
+
         .register-link {
             text-align: center;
             display: block;
             margin-top: 20px;
-            color: #6c757d;
+            color: #6c757d; /* Grey text */
         }
+
         .register-link:hover {
-            color: #007bff;
+            color: #00aaff; /* Blue on hover */
+        }
+
+        /* Flash Message Styles */
+        .alert {
+            background-color: #1a1a1a; /* Dark background for alerts */
+            color: #ffffff; /* White text */
+            border: 1px solid #00aaff; /* Blue border */
+        }
+
+        .alert .close {
+            color: #ffffff;
+        }
+
+        /* Additional Styles for Consistency */
+        a {
+            color: #00aaff; /* Blue links */
+        }
+
+        a:hover {
+            color: #0088cc; /* Darker blue on hover */
+            text-decoration: none;
+        }
+
+        label {
+            color: #ffffff; /* Ensure labels are white */
         }
     </style>
 </head>
@@ -88,10 +136,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
-    <!-- JavaScript to Auto-Dismiss Flash Messages after 3 seconds -->
+    <!-- JavaScript to Auto-Dismiss Flash Messages after 2 seconds -->
     <script>
         $(document).ready(function() {
-            // Auto-dismiss flash messages after 3 seconds
+            // Auto-dismiss flash messages after 2 seconds
             setTimeout(function() {
                 $('.alert').fadeOut('slow', function() {
                     $(this).remove(); // Remove the alert element after fading out
