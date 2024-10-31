@@ -309,7 +309,7 @@ def filter_favorites():
     return render_template('favorites.html', movies=movies)
 
 
-# Initialize database tables if they do not exist
+# Initialize database tables if they do not existss
 with app.app_context():
     db.create_all()
 
