@@ -15,6 +15,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <!-- jQuery UI CSS for Autocomplete -->
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
 
@@ -37,11 +39,17 @@
 
             <!-- Navbar Links and Search Bar -->
             <div class="collapse navbar-collapse" id="navbarNav">
-                <!-- Centered and Flexible Search Bar -->
+                <!-- Centered and Flexible Search Bar with Filter Icon -->
                 <form class="form-inline mx-auto my-2 my-lg-0 search-form" action="/recommend" method="POST">
                     <div class="d-flex w-100">
+                        <!-- Filter Button -->
+                        <a href="/filters" class="btn btn-outline-secondary mr-2" aria-label="Filter">
+                            <i class="fas fa-filter"></i>
+                        </a>
+                        <!-- Search Input -->
                         <input id="movie-search" class="form-control flex-grow-1 search-input mr-2" type="search" placeholder="Enter Movie Title" 
                                aria-label="Search" name="movie_title" required>
+                        <!-- Search Button -->
                         <button class="btn btn-outline-success" type="submit">Search</button>
                     </div>
                 </form>

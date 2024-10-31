@@ -688,4 +688,82 @@ footer a:hover {
     .modal-content {
         border-radius: 0;
     }
+
+    /* styles.css */
+
+/* Adjust top padding to account for fixed navbar */
+body {
+    padding-top: 70px;
+}
+
+/* Section Titles */
+.section-title {
+    font-size: 2rem;
+    margin-bottom: 20px;
+}
+
+/* Carousel Image */
+.carousel-image {
+    height: 500px;
+    object-fit: cover;
+}
+
+/* Movie Card Image */
+.card-img-top {
+    height: 400px;
+    object-fit: cover;
+}
+
+/* Horizontal Scroll Container */
+.horizontal-scroll-container {
+    position: relative;
+}
+
+/* Scroll Buttons */
+.scroll-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(255,255,255,0.7);
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.left-btn {
+    left: 0;
+}
+
+.right-btn {
+    right: 0;
+}
+
+/* Movie Card */
+.movie-card {
+    flex: 0 0 auto;
+    width: 200px;
+    margin-right: 15px;
+}
+
+/* See More Button */
+.see-more-btn {
+    margin-top: 10px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .carousel-image {
+        height: 300px;
+    }
+
+    .card-img-top {
+        height: 300px;
+    }
+
+    .movie-card {
+        width: 150px;
+    }
+}
+
 }

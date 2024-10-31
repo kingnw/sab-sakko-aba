@@ -5,9 +5,10 @@ from auth import auth_blueprint
 from models import db, User, UserMovies, Review
 from recommendation import get_movie_recommendations
 import requests
+import os
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Replace with a strong secret key
+app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Use environment variable for security
 
 # Configure SQLAlchemy database URI
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
@@ -19,8 +20,9 @@ login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 login_manager.init_app(app)
 
-# TMDB API Key
-API_KEY = '9ba93d1cf5e3054788a377f636ea1033'  # Consider using environment variables for security
+# TMDB API Key (Use environment variable for security)
+API_KEY = os.environ.get('TMDB_API_KEY', '9ba93d1cf5e3054788a377f636ea1033')
+TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 
 # Load user callback for Flask-Login
 @login_manager.user_loader
@@ -32,78 +34,110 @@ app.register_blueprint(auth_blueprint, url_prefix='/auth')
 
 # TMDB API Functions
 def get_top_rated_movies():
-    url = f'https://api.themoviedb.org/3/movie/top_rated?api_key={API_KEY}&language=en-US&page=1'
-    response = requests.get(url)
+    url = f'{TMDB_BASE_URL}/movie/top_rated'
+    params = {
+        'api_key': API_KEY,
+        'language': 'en-US',
+        'page': 1
+    }
+    response = requests.get(url, params=params)
     return process_movie_results(response, include_backdrop=False)
 
 def get_new_released_movies():
-    url = f'https://api.themoviedb.org/3/movie/now_playing?api_key={API_KEY}&language=en-US&page=1'
-    response = requests.get(url)
+    url = f'{TMDB_BASE_URL}/movie/now_playing'
+    params = {
+        'api_key': API_KEY,
+        'language': 'en-US',
+        'page': 1
+    }
+    response = requests.get(url, params=params)
     return process_movie_results(response, include_backdrop=False)
 
 def get_trending_movies():
-    url = f'https://api.themoviedb.org/3/trending/movie/week?api_key={API_KEY}'
-    response = requests.get(url)
+    url = f'{TMDB_BASE_URL}/trending/movie/week'
+    params = {
+        'api_key': API_KEY,
+    }
+    response = requests.get(url, params=params)
     return process_movie_results(response, include_backdrop=True)
 
 def get_genres():
     """Fetches a list of genres from the TMDB API."""
-    url = f'https://api.themoviedb.org/3/genre/movie/list?api_key={API_KEY}&language=en-US'
-    response = requests.get(url)
+    url = f'{TMDB_BASE_URL}/genre/movie/list'
+    params = {
+        'api_key': API_KEY,
+        'language': 'en-US'
+    }
+    response = requests.get(url, params=params)
     if response.status_code == 200:
         return response.json().get('genres', [])
     return []
 
-def search_movie(movie_title, release_year=None, rating=None, genre=None, language=None):
-    url = f'https://api.themoviedb.org/3/search/movie?api_key={API_KEY}&query={movie_title}&page=1&include_adult=false'
-    response = requests.get(url)
-    if response.status_code == 200:
-        results = response.json().get('results', [])
-        filtered_results = []
-        
-        for movie in results:
-            # Apply filters
-            if release_year:
-                movie_release_year = movie.get('release_date', '').split('-')[0]
-                if movie_release_year != str(release_year):
-                    continue
-            if rating:
-                if float(movie.get('vote_average', 0)) < float(rating):
-                    continue
-            if genre:
-                if int(genre) not in movie.get('genre_ids', []):
-                    continue
-            if language:
-                if movie.get('original_language') != language:
-                    continue
+def search_movie(movie_title, filters=None):
+    """Searches for movies based on title and optional filters."""
+    url = f'{TMDB_BASE_URL}/search/movie'
+    params = {
+        'api_key': API_KEY,
+        'language': 'en-US',
+        'query': movie_title,
+        'page': 1,
+        'include_adult': False
+    }
 
-            # Add poster and rating fields
-            movie['rating'] = movie.get('vote_average', 'N/A')
-            poster_path = movie.get('poster_path')
-            movie['poster'] = f"https://image.tmdb.org/t/p/original{poster_path}" if poster_path else "https://via.placeholder.com/500x750?text=No+Image"
-            filtered_results.append(movie)
-        
-        return filtered_results
+    if filters:
+        if 'release_year_min' in filters and filters['release_year_min']:
+            params['primary_release_date.gte'] = f"{filters['release_year_min']}-01-01"
+        if 'release_year_max' in filters and filters['release_year_max']:
+            params['primary_release_date.lte'] = f"{filters['release_year_max']}-12-31"
+        if 'rating_min' in filters and filters['rating_min']:
+            params['vote_average.gte'] = filters['rating_min']
+        if 'rating_max' in filters and filters['rating_max']:
+            params['vote_average.lte'] = filters['rating_max']
+        if 'genres' in filters and filters['genres']:
+            # TMDB allows filtering by genres using with_genres
+            # The genres should be a comma-separated string of genre IDs
+            params['with_genres'] = ','.join(filters['genres'])
+        if 'language' in filters and filters['language']:
+            params['with_original_language'] = filters['language']
+        if 'sort_by' in filters and filters['sort_by']:
+            params['sort_by'] = filters['sort_by']
+
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        return process_movie_results(response, include_backdrop=False)
     return []
 
 def get_movie_details(movie_id):
-    url = f'https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&language=en-US'
-    response = requests.get(url)
+    """Fetches detailed information for a specific movie."""
+    url = f'{TMDB_BASE_URL}/movie/{movie_id}'
+    params = {
+        'api_key': API_KEY,
+        'language': 'en-US'
+    }
+    response = requests.get(url, params=params)
     if response.status_code == 200:
         movie = response.json()
         movie['rating'] = movie.get('vote_average', 'N/A')
         poster_path = movie.get('poster_path')
         movie['poster'] = f"https://image.tmdb.org/t/p/original{poster_path}" if poster_path else "https://via.placeholder.com/500x750?text=No+Image"
+        backdrop_path = movie.get('backdrop_path')
+        movie['backdrop'] = f"https://image.tmdb.org/t/p/original{backdrop_path}" if backdrop_path else "https://via.placeholder.com/1280x720?text=No+Image"
         return movie
     return None
 
 def get_recommendations(movie_id):
     """Fetches recommendations for a given movie ID."""
-    url = f'https://api.themoviedb.org/3/movie/{movie_id}/recommendations?api_key={API_KEY}'
-    response = requests.get(url)
+    url = f'{TMDB_BASE_URL}/movie/{movie_id}/recommendations'
+    params = {
+        'api_key': API_KEY,
+        'language': 'en-US',
+        'page': 1
+    }
+    response = requests.get(url, params=params)
     return process_movie_results(response, include_backdrop=False)
 
 def process_movie_results(response, include_backdrop=False):
+    """Processes movie results from TMDB API responses."""
     if response.status_code == 200:
         results = response.json().get('results', [])
         for movie in results:
@@ -116,15 +150,15 @@ def process_movie_results(response, include_backdrop=False):
         return results
     return []
 
-# Calculate average rating for a movie
 def calculate_avg_rating(movie_id):
+    """Calculates the average rating for a movie based on user reviews."""
     reviews = Review.query.filter_by(movie_id=movie_id).all()
     if reviews:
         avg_rating = sum([review.rating for review in reviews]) / len(reviews)
         return round(avg_rating, 1)
     return "No ratings yet"
 
-# Routes for Watchlist and Favorites
+# Route to add a movie to Watchlist or Favorites
 @app.route('/<category>/add/<int:movie_id>', methods=['POST'])
 @login_required
 def add_movie(category, movie_id):
@@ -147,6 +181,29 @@ def add_movie(category, movie_id):
 
     return redirect(url_for(f'view_{category}'))
 
+# Route to remove a movie from Watchlist or Favorites
+@app.route('/<category>/remove/<int:movie_id>', methods=['POST'])
+@login_required
+def remove_movie(category, movie_id):
+    if category not in ['watchlist', 'favorites']:
+        flash("Invalid category.", "danger")
+        return redirect(url_for('index'))
+    
+    entry = UserMovies.query.filter_by(user_id=current_user.id, movie_id=movie_id, category=category).first()
+    if entry:
+        try:
+            db.session.delete(entry)
+            db.session.commit()
+            flash(f"Movie removed from {category}.", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error removing movie from {category}: {str(e)}", "danger")
+    else:
+        flash("Movie not found in your list.", "warning")
+    
+    return redirect(url_for(f'view_{category}'))
+
+# Route to view Watchlist
 @app.route('/watchlist')
 @login_required
 def view_watchlist():
@@ -156,6 +213,7 @@ def view_watchlist():
         flash("Your watchlist is empty.", "info")
     return render_template('watchlist.html', movies=movies, category="Watchlist")
 
+# Route to view Favorites
 @app.route('/favorites')
 @login_required
 def view_favorites():
@@ -168,19 +226,38 @@ def view_favorites():
 # Route to recommend movies with search and filters
 @app.route('/recommend', methods=['POST'])
 def recommend():
+    # Extract search and filter parameters from the form
     movie_title = request.form.get('movie_title', '')
-    release_year = request.form.get('release_year', '')
-    rating = request.form.get('rating', '')
-    genre = request.form.get('genre', '')
+    release_year_min = request.form.get('release_year_min', '')
+    release_year_max = request.form.get('release_year_max', '')
+    rating_min = request.form.get('rating_min', '')
+    rating_max = request.form.get('rating_max', '')
+    genres = request.form.getlist('genres')  # For multiple genres
     language = request.form.get('language', '')
+    sort_by = request.form.get('sort_by', '')
 
-    genres = get_genres()
-    search_results = search_movie(movie_title, release_year, rating, genre, language)
-    
+    genres_list = get_genres()
+
+    # Prepare filters dictionary
+    filters = {
+        'release_year_min': release_year_min,
+        'release_year_max': release_year_max,
+        'rating_min': rating_min,
+        'rating_max': rating_max,
+        'genres': genres,
+        'language': language,
+        'sort_by': sort_by
+    }
+
+    # Perform movie search with filters
+    search_results = search_movie(movie_title, filters=filters)
+
+    # Fetch recommendations based on the first search result
     recommendations = []
     if movie_title and search_results:
         recommendations = get_recommendations(search_results[0]['id'])
 
+    # Fetch other movie categories
     trending_movies = get_trending_movies()
     most_watched_movies = get_top_rated_movies()
     new_released_movies = get_new_released_movies()
@@ -190,7 +267,7 @@ def recommend():
         search_results=search_results,
         recommendations=recommendations,
         search_query=movie_title,
-        genres=genres,
+        genres=genres_list,
         trending_movies=trending_movies,
         most_watched_movies=most_watched_movies,
         new_released_movies=new_released_movies
@@ -203,8 +280,15 @@ def autocomplete():
     if not query:
         return jsonify([])
 
-    url = f'https://api.themoviedb.org/3/search/movie?api_key={API_KEY}&query={query}&page=1&include_adult=false'
-    response = requests.get(url)
+    url = f'{TMDB_BASE_URL}/search/movie'
+    params = {
+        'api_key': API_KEY,
+        'language': 'en-US',
+        'query': query,
+        'page': 1,
+        'include_adult': False
+    }
+    response = requests.get(url, params=params)
     
     if response.status_code == 200:
         results = response.json().get('results', [])
@@ -263,53 +347,66 @@ def movie_details(movie_id):
         review_text = request.form.get('review_text')
 
         if rating:
-            new_review = Review(user_id=current_user.id, movie_id=movie_id, rating=float(rating), review_text=review_text)
-            db.session.add(new_review)
-            db.session.commit()
-            flash("Review submitted successfully!", "success")
+            try:
+                rating_value = float(rating)
+                if 0 <= rating_value <= 10:
+                    new_review = Review(user_id=current_user.id, movie_id=movie_id, rating=rating_value, review_text=review_text)
+                    db.session.add(new_review)
+                    db.session.commit()
+                    flash("Review submitted successfully!", "success")
+                else:
+                    flash("Rating must be between 0 and 10.", "warning")
+            except ValueError:
+                flash("Invalid rating value.", "danger")
             return redirect(url_for('movie_details', movie_id=movie_id))
+        else:
+            flash("Please provide a rating.", "warning")
 
     return render_template('movie_details.html', movie=movie, reviews=reviews, avg_rating=avg_rating, recommendations=recommendations)
 
-# New Route: Remove Movie from Watchlist or Favorites
-@app.route('/<category>/remove/<int:movie_id>', methods=['POST'])
-@login_required
-def remove_movie(category, movie_id):
-    if category not in ['watchlist', 'favorites']:
-        flash("Invalid category.", "danger")
-        return redirect(url_for('index'))
-    
-    entry = UserMovies.query.filter_by(user_id=current_user.id, movie_id=movie_id, category=category).first()
-    if entry:
-        try:
-            db.session.delete(entry)
-            db.session.commit()
-            flash(f"Movie removed from {category}.", "success")
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Error removing movie from {category}: {str(e)}", "danger")
-    else:
-        flash("Movie not found in your list.", "warning")
-    
-    return redirect(url_for(f'view_{category}'))
+# Route to display filters page
+@app.route('/filters')
+def filters():
+    genres = get_genres()
+    return render_template('filters.html', genres=genres)
 
+# Route to display filtered Watchlist (Optional Enhancement)
 @app.route('/filter_watchlist', methods=['GET'])
 @login_required
 def filter_watchlist():
     sortby = request.args.get('sortby')
     movies = get_filtered_watchlist(current_user.id, sortby)
-    
+    return render_template('watchlist.html', movies=movies, category="Watchlist")
 
+# Route to display filtered Favorites (Optional Enhancement)
 @app.route('/filter_favorites', methods=['GET'])
 @login_required
 def filter_favorites():
     sortby = request.args.get('sortby')
-    # Retrieve and process the favorite movies based on filters
     movies = get_filtered_watchlist(current_user.id, sortby, category='favorites')
-    return render_template('favorites.html', movies=movies)
+    return render_template('favorites.html', movies=movies, category="Favorites")
 
+# Helper function to get filtered watchlist or favorites
+def get_filtered_watchlist(user_id, sortby, category='watchlist'):
+    watchlist_movies = UserMovies.query.filter_by(user_id=user_id, category=category).all()
+    movies = [get_movie_details(movie.movie_id) for movie in watchlist_movies if get_movie_details(movie.movie_id)]
+    
+    if sortby:
+        if sortby == 'rating_desc':
+            movies.sort(key=lambda x: x.get('rating', 0), reverse=True)
+        elif sortby == 'rating_asc':
+            movies.sort(key=lambda x: x.get('rating', 0))
+        elif sortby == 'release_date_desc':
+            movies.sort(key=lambda x: x.get('release_date', ''), reverse=True)
+        elif sortby == 'release_date_asc':
+            movies.sort(key=lambda x: x.get('release_date', ''))
+        elif sortby == 'title_asc':
+            movies.sort(key=lambda x: x.get('title', '').lower())
+        elif sortby == 'title_desc':
+            movies.sort(key=lambda x: x.get('title', '').lower(), reverse=True)
+    return movies
 
-# Initialize database tables if they do not existss
+# Initialize database tables if they do not exist
 with app.app_context():
     db.create_all()
 
