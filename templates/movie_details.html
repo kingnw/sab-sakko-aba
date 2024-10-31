@@ -8,10 +8,11 @@
 </head>
 <body>
 
-    <!-- Navbar with Search Bar -->
+    <!-- Navbar with Search Bar and Conditional Authentication Links -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <a class="navbar-brand" href="/">Movie Recs</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" 
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
@@ -25,12 +26,42 @@
                 <li class="nav-item">
                     <a class="nav-link" href="/new-released">New Released</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/watchlist">View Watchlist</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/favorites">View Favorites</a>
+                </li>
             </ul>
+
             <!-- Search Bar -->
             <form class="form-inline my-2 my-lg-0" action="/recommend" method="POST">
-                <input class="form-control mr-sm-2" type="search" placeholder="Enter Movie Title" aria-label="Search" name="movie_title" required>
+                <input class="form-control mr-sm-2" type="search" placeholder="Enter Movie Title" aria-label="Search" 
+                       name="movie_title" required>
                 <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
             </form>
+
+
+            <!-- Conditional User Banner, Logout, or Authentication Links -->
+            <ul class="navbar-nav ml-auto">
+                {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <span class="user-banner">
+                            Welcome {{ current_user.username }}
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-outline-danger" href="/auth/logout" role="button">Logout</a>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/auth/login">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/auth/register">Register</a>
+                    </li>
+                {% endif %}
+            </ul>
         </div>
     </nav>
 
@@ -44,21 +75,101 @@
                 <h2>{{ movie['title'] }}</h2>
                 <p><strong>Release Date:</strong> {{ movie['release_date'] }}</p>
                 <p><strong>Rating:</strong> {{ movie['vote_average'] }}/10</p>
+                <p><strong>Genres:</strong>
+                    {% for genre in movie['genres'] %}
+                        {{ genre['name'] }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </p>
+                <p><strong>Language:</strong> {{ movie['original_language'] | upper }}</p>
                 <p><strong>Description:</strong> {{ movie['overview'] }}</p>
+
+                <!-- Action Buttons -->
+                {% if current_user.is_authenticated %}
+                <div class="action-buttons mt-3">
+                    <form action="/watchlist/add/{{ movie['id'] }}" method="POST" style="display:inline;">
+                        <button type="submit" class="btn btn-success">Add to Watchlist</button>
+                    </form>
+                    <form action="/favorites/add/{{ movie['id'] }}" method="POST" style="display:inline;">
+                        <button type="submit" class="btn btn-info">Add to Favorites</button>
+                    </form>
+                </div>
+                {% endif %}
             </div>
+        </div>
+    </div>
+
+    <!-- User Ratings and Reviews Section -->
+    <div class="container mt-5">
+        <h4>Average User Rating: {{ avg_rating }}/10</h4>
+
+        <h5>User Reviews:</h5>
+        {% for review in reviews %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">{{ review.user.username }} - Rated: {{ review.rating }}/10</h6>
+                    <p class="card-text">{{ review.review_text }}</p>
+                    <small class="text-muted">{{ review.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                </div>
+            </div>
+        {% else %}
+            <p>No reviews yet. Be the first to review this movie!</p>
+        {% endfor %}
+    </div>
+
+    <!-- Review Submission Form -->
+    {% if current_user.is_authenticated %}
+        <div class="container mt-4">
+            <h5>Submit Your Review:</h5>
+            <form method="POST" action="{{ url_for('movie_details', movie_id=movie['id']) }}">
+                <div class="form-group">
+                    <label for="rating">Rating (out of 10):</label>
+                    <input type="number" class="form-control" id="rating" name="rating" min="1" max="10" step="0.1" required>
+                </div>
+                <div class="form-group">
+                    <label for="review_text">Review:</label>
+                    <textarea class="form-control" id="review_text" name="review_text" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit Review</button>
+            </form>
+        </div>
+    {% else %}
+        <div class="container mt-4">
+            <p>Please <a href="{{ url_for('auth.login') }}">log in</a> to submit a review.</p>
+        </div>
+    {% endif %}
+
+    <!-- Recommended Movies Section -->
+    <div class="container mt-5">
+        <h5>Similar Movies That You May Like:</h5>
+        <div class="row">
+            {% for rec in recommendations %}
+                <div class="col-md-3 mb-4">
+                    <div class="card">
+                        <a href="/movie/{{ rec['id'] }}">
+                            <img src="{{ rec['poster'] }}" alt="{{ rec['title'] }}" class="card-img-top">
+                        </a>
+                        <div class="card-body">
+                            <a href="/movie/{{ rec['id'] }}">
+                                <h6 class="card-title">{{ rec['title'] }}</h6>
+                            </a>
+                            <p class="card-text">Rating: {{ rec['rating'] }}/10</p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
         </div>
     </div>
 
     <!-- Footer -->
     <footer class="bg-light text-center text-lg-start mt-5">
         <div class="text-center p-3">
-            © 2024 Movie Recs: 
+            © 2024 Movie Recs:
             <a class="text-dark" href="#">movierecs.com</a>
         </div>
     </footer>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-
+    
 </body>
 </html>

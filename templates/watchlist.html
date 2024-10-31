@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Your Watchlist</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* Style for the user banner */
+        .user-banner {
+            display: inline-block;
+            padding: 5px 15px;
+            background-color: #e9ecef;
+            color: #333;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        /* Additional styling for the watchlist page */
+        body {
+            min-height: 100vh;
+        }
+        .card-img-top {
+            height: 350px;
+            object-fit: cover;
+        }
+        /* Ensure footer sticks to the bottom if content is short */
+        html, body {
+            height: 100%;
+        }
+        .content-wrapper {
+            min-height: calc(100% - 100px); /* Adjust based on header and footer height */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar with Search Bar and Conditional Authentication Links -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="/">Movie Recs</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"     aria-controls="navbarNav"     aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/top-rated">Top Rated</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/new-released">New Released</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/watchlist">View Watchlist</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/favorites">View Favorites</a>
+                </li>
+            </ul>
+            <!-- Search Bar -->
+            <form class="form-inline my-2 my-lg-0" action="/recommend" method="POST">
+                <input class="form-control mr-sm-2" type="search" placeholder="Enter Movie Title" aria-label="Search" name="movie_title" required>
+                <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
+            </form>
+            <!-- Conditional User Banner, Logout, or Authentication Links -->
+            <ul class="navbar-nav ml-auto">
+                {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <span class="user-banner">
+                            Welcome {{ current_user.username }}
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-outline-danger" href="/auth/logout" role="button">Logout</a>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/auth/login">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/auth/register">Register</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content Wrapper -->
+    <div class="content-wrapper">
+        <!-- Main Content -->
+        <div class="container mt-5">
+            <h2 class="mb-4">Your Watchlist</h2>
+            {% if movies %}
+                <div class="row">
+                    {% for movie in movies %}
+                        <div class="col-md-3 col-sm-6 mb-4">
+                            <div class="card h-100">
+                                <a href="{{ url_for('movie_details', movie_id=movie['id']) }}">
+                                    <img src="{{ movie['poster'] }}" class="card-img-top" alt="{{ movie['title'] }}">
+                                </a>
+                                <div class="card-body d-flex flex-column">
+                                    <a href="{{ url_for('movie_details', movie_id=movie['id']) }}" class="text-decoration-none text-dark">
+                                        <h5 class="card-title">{{ movie['title'] }}</h5>
+                                    </a>
+                                    <p class="card-text">Rating: {{ movie['rating'] }}</p>
+                                    <a href="{{ url_for('movie_details', movie_id=movie['id']) }}" class="btn btn-primary mt-auto">Details</a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>Your watchlist is empty.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light text-center text-lg-start mt-auto">
+        <div class="text-center p-3">
+            © 2024 Movie Recs:
+            <a class="text-dark" href="#">movierecs.com</a>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+</body>
+</html>
